@@ -1,17 +1,17 @@
 /** @type {import("pliny/config").PlinyConfig } */
 const siteMetadata = {
   title: 'Explore is Fun',
-  author: 'Tails Azimuth',
+  author: 'Explore is Fun',
   headerTitle: 'Explore is Fun',
   description: 'Blog about my adventures in the world of technology',
   language: 'en-us',
   theme: 'system', // system, dark or light
   siteUrl: 'https://exploreis.fun',
-  siteRepo: 'https://github.com/tailsazimuth/exploreisfun',
+  siteRepo: 'https://github.com/',
   siteLogo: `${process.env.BASE_PATH || ''}/static/images/logo.png`,
   socialBanner: `${process.env.BASE_PATH || ''}/static/images/twitter-card.png`,
   mastodon: 'https://mastodon.social/@mastodonuser',
-  email: 'tailsazimuth@gmail.com',
+  email: 'shipstore.tech@gmail.com',
   github: 'https://github.com',
   x: 'https://twitter.com/x',
   // twitter: 'https://twitter.com/Twitter',
@@ -45,9 +45,9 @@ const siteMetadata = {
     // posthogAnalytics: {
     //   posthogProjectApiKey: '', // e.g. 123e4567-e89b-12d3-a456-426614174000
     // },
-    // googleAnalytics: {
-    //   googleAnalyticsId: '', // e.g. G-XXXXXXX
-    // },
+    googleAnalytics: {
+      googleAnalyticsId: 'G-5TBC961HT7', // e.g. G-XXXXXXX
+    },
   },
   newsletter: {
     // supports mailchimp, buttondown, convertkit, klaviyo, revue, emailoctopus, beehive
