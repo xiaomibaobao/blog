@@ -1,0 +1,65 @@
+---
+title: 'How to Merge an Existing Git Repository into Turborepo'
+date: '2024-11-26'
+summary: 'A comprehensive guide on merging existing applications or libraries into a Turborepo monorepo while preserving git history.'
+tags: ['turborepo', 'monorepo', 'git', 'migration']
+---
+
+## Introduction
+
+Migrating to a monorepo architecture is becoming increasingly popular for managing multiple related projects. If you're working with [Turborepo](https://turbo.build/repo/docs) and need to merge an existing repository while preserving its git history, this guide will walk you through the entire process step by step.
+
+This approach is particularly useful when consolidating multiple standalone repositories into a unified Turborepo workspace, ensuring you don't lose valuable commit history and maintaining proper project structure.
+
+> **Note**: This guide assumes you have basic familiarity with git commands and Turborepo concepts. If you're new to monorepos, consider reading about [monorepo benefits](https://turbo.build/repo/docs/handbook/what-is-a-monorepo) first.
+
+## Prerequisites
+
+```bash
+git clone <repo-url> source-repo
+```
+
+Change the directory to the cloned repository:
+
+```bash
+cd source-repo
+```
+
+### Step 2: Filter the source repository into its own subdirectory
+
+For this step we will use the [git filter-repo](https://github.com/newren/git-filter-repo) tool to filter the source repository into its own subdirectory, this will also filter the history of the repository.
+
+```bash
+git filter-repo --to-subdirectory-filter folder-name
+```
+
+Replace `folder-name` with the desired subdirectory for this repository in the monorepo.
+
+### Step 3: Push the Filtered Repo to the Monorepo
+
+Add the monorepo as a remote:
+
+```bash
+git remote add monorepo <monorepo-url>
+```
+
+Push the filtered history to a unique branch (e.g., old-repo-1):
+
+```bash
+git push monorepo HEAD:refs/heads/old-repo-1
+```
+
+<br />
+
+# In the monorepo
+
+Fetch and merge the source repository history into the monorepo:
+
+```bash
+git fetch origin old-repo-1
+git merge --allow-unrelated-histories old-repo-1
+```
+
+This command will merge the source repository history into our Turborepo, now you just need to move your files to the correct [location](https://turbo.build/repo/docs/crafting-your-repository/structuring-a-repository#anatomy-of-a-workspace) in the monorepo and you are good to go.
+
+I hope this article was helpful to you, if you have any questions or suggestions, feel free to reach out to me in the comments below.

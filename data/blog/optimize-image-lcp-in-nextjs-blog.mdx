@@ -1,0 +1,143 @@
+---
+title: 'Optimize image LCP in Next.js blog for better performance'
+date: '2024-03-26'
+summary: 'A guide on how to optimize image LCP in Next.js blog.'
+tags: ['Next.js', 'Performance', 'Optimization', 'LCP', 'Image Optimization']
+---
+
+In March 2024, I added a banner to my blog to make it look less monotonous. However, recently when I logged into Vercel's control panel, I noticed that the Speed Insights score was getting lower and lower. I was shocked to see that the LCP (Largest Contentful Paint) indicator had reached 6.2 seconds, which was a bright red warning that it was time to optimize my blog's performance.
+
+LCP (Largest Contentful Paint)
+LCP : Largest Contentful Paint, it represents the loading time of the largest element in the viewport. This indicator is a good measure of the page's loading speed because the largest element is usually the main content that users want to see.
+
+LCP this indicator considers the following types of elements:
+A `<img/>` element (first frame time for GIF or animated PNG)
+An `<image/>` element inside a `<svg/>` element
+A `<video/>` element (the system will use the poster image loading time or the first frame display time of the video, whichever is earlier)
+An element with a background image loaded using the `url()` function (not CSS gradients)
+A block-level element containing text nodes or other inline text elements
+In addition, based on the Chromium browser, the LCP measurement method will exclude elements such as opacity 0 and covering the entire viewport using heuristics, reducing the complexity of the measurement. Although there is a possibility of increasing the scope in the future, we will not delve into it here.
+
+What is a good LCP score?
+As a blogger, I have a high tolerance for most blogs. Many websites are deployed on low-performance servers, foreign servers, or GitHub Pages, and although they often take a long time to load, the content is really worth waiting for.
+
+Although we all understand that the longer the wait time, the lower the user retention rate, so I still hope that my blog can load as quickly as possible to provide a good user experience. To provide a good user experience, we should strive to keep the LCP within 2.5 seconds, which can be seen how exaggerated 6.2 seconds is.
+
+![LCP indicator](/static/images/blog/lcp1.webp)
+
+LCP indicator
+Lighthouse performance test
+Before we start optimizing, we need to use the Lighthouse tool in the Chrome developer tools to test the website, because the sample size on Vercel is small and is greatly affected by server stability and user location.
+
+You can see that in the test for mobile, LCP reached 2.6 seconds
+
+![LCP indicator](/static/images/blog/lcp2.webp)
+
+Lighthouse test results
+In fact, we can roughly guess that the problem is the banner image, because the image is loaded immediately, and the loading time is too long.
+
+LCP element
+The loading time of this image is too long, and the problem is that the Next.js has already optimized the image, so what's the problem?
+
+Next.js image optimization
+In this site, I use the built-in `<Image/>` tag of Next.js to load images, which extends the HTML `<img/>` tag and automatically optimizes it, including but not limited to:
+
+Dimension optimization: Use modern image formats (such as WebP and AVIF) and provide adaptive image sizes based on the device
+Visual stability: Automatically prevent layout shifts (CLS) during image loading
+Faster page load speed: Load images only when they enter the viewport using native browser lazy loading, supporting blur placeholder
+Resource flexibility: Support adjusting image size on demand, even images stored on remote servers can be optimized
+you can see the code below, Next.js has built-in image optimization, which is very useful. The implementation of the banner is very simple, just three lines of code
+
+```js
+import Image from 'next/image'
+import banner from '@/public/images/banner.png'
+
+;<Image src={banner} alt="banner" />
+```
+
+But the problem is that the image is loaded immediately, and the loading time is too long.
+
+`<Image/>` has a property priority, which is false by default. When set to true, the image is considered high priority and pre-loaded, and lazy loading is automatically disabled.
+
+The official documentation even gives a suggestion, for any image detected as the Largest Contentful Paint (LCP) element, you should use the priority property. It may be appropriate to have multiple priority images, as different images may be the LCP element for different viewport sizes.
+
+Optimize banner
+Then we try to set the priority property of the banner image to true, see if it can improve the LCP performance
+
+```HTML
+<Image src={banner} alt='banner' priority={true} />
+```
+
+Lighthouse test results
+Again, use Lighthouse to test, you can see that LCP has dropped to 0.6 seconds, but is the result really as good as the picture? In fact, when the change was just deployed, LCP even surged, and the subsequent test results I believe have been affected by the cache.
+
+![LCP indicator](/static/images/blog/lcp3.webp)
+
+Speed Insight data
+This...this is wrong, why did LCP increase after I set the priority property?
+
+I was so confused that I went online to find a lot of related issues and posts, and found that many people reported that priority did not work, and even some people said that it was better to use the native img tag, and the problem still exists today.
+
+priority did not work
+issue
+Image implementation
+If so, we directly check the source code of Next.js, see what the logic is like in it
+
+```
+// image.tsx
+// Here is only part of the key code, assuming priority is true
+
+export default function Image({
+  priority = false, // priority defaults to false, if true, replace the default value
+  loading // loading has no default value
+}: ImageProps) {
+  // Define a isLazy variable to determine if lazy loading is enabled, when priority is true, isLazy is false
+  let isLazy =
+    !priority && (loading === 'lazy' || typeof loading === 'undefined')
+    const imgElementArgs = {
+      isLazy, // isLazy is false
+      loading, // loading has no default value
+      ...rest
+    }
+  // Return an ImageElement component
+  return (
+    <ImageElement {...imgElementArgs} />
+  )
+}
+
+// ImageElement component implementation
+const ImageElement = ({
+  isLazy,
+  loading
+}: ImageElementProps) => {
+  loading = isLazy ? 'lazy' : loading // isLazy is false, loading has no default value
+  return (
+    <img
+      {...rest}
+      {...imgAttributes} // some basic attributes
+    />
+    {(isLazy || placeholder === 'blur') && (
+      <noscript>
+        <img
+          {...rest}
+          loading={loading} // when isLazy is true, loading is lazy
+        />
+      </noscript>
+    )}
+  )
+}
+```
+
+When priority is true, the component returns a regular img tag, and the loading attribute of the img tag defaults to eager, which means that the image is loaded immediately, regardless of whether it is outside the visible viewport.
+
+The loading attribute of the img tag
+From the source code of the `<Image/>` tag, we cannot see how Next.js preloads the image, but we know that the image will be loaded immediately, just like using the native img tag, and in my test, the problem of priority not working is really exist.
+
+![LCP indicator](/static/images/blog/lcp4.webp)
+
+Conclusion
+Think about it, if you don't know when and from where users will jump to your website, how can you preload it? The most likely situation is that the image will be loaded immediately after the request is made.
+
+But if you know that the user has loaded a related page, such as the homepage, and there is an image on the article page, then you can preload the image on the article page after the homepage is loaded, so I guess that the preload of `<Image/>` is based on this situation.
+
+The purpose of this article is to share the operation of image optimization in Next.js, but unfortunately, I encountered this problem in the process of practice, but I also learned some new knowledge, so it can be seen as a small exploration.
